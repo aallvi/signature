@@ -11,8 +11,10 @@ import fs from "node:fs";
 import qrcode from "qrcode"
 import moment from "moment";
 import fetch from "node-fetch"
+import path from "node:path";
 
 import PDFArrayCustom from "./PDFArrayCustom.js";
+import { extractSignature } from "node-signpdf/dist/helpers/index.js";
 
 export default class SignPDF {
   constructor(pdfFile, certFile) {
@@ -24,10 +26,15 @@ export default class SignPDF {
    * @return Promise<Buffer>
    */
   async signPDF() {
-    let newPDF = await this.firmar()
-    newPDF = await this._addPlaceholder(newPDF);
+ 
+
+
+    let newPDF = await this._addPlaceholder();
+
+
     newPDF = signer.sign(newPDF, this.certificate);
 
+  
     return newPDF;
   }
 
@@ -35,8 +42,8 @@ export default class SignPDF {
    * @see https://github.com/Hopding/pdf-lib/issues/112#issuecomment-569085380
    * @returns {Promise<Buffer>}
    */
-  async _addPlaceholder(newPDF) {
-    const loadedPdf = newPDF
+  async _addPlaceholder() {
+    const loadedPdf = await PDFDocument.load(this.pdfDoc);
     const ByteRange = PDFArrayCustom.withContext(loadedPdf.context);
     const DEFAULT_BYTE_RANGE_PLACEHOLDER = '**********';
     const SIGNATURE_LENGTH = 3322;
@@ -63,12 +70,14 @@ export default class SignPDF {
       Type: 'Annot',
       Subtype: 'Widget',
       FT: 'Sig',
+      // Rect: [275, 130, 152, 0], // Signature rect size
       Rect: [145, 130, 20, 0], // Signature rect size
       V: signatureDictRef,
       T: PDFString.of('Websal signature'),
       F: 4,
       P: pages[pages.length-1].ref,
-    });
+    },
+    );
 
     const widgetDictRef = loadedPdf.context.register(widgetDict);
 
@@ -87,15 +96,18 @@ export default class SignPDF {
     // @see https://github.com/Hopding/pdf-lib/issues/541
     const pdfBytes = await loadedPdf.save({ useObjectStreams: false });
 
+
+    
     return SignPDF.unit8ToBuffer(pdfBytes);
+
   }
 
 
   async firmar (){
 
         
-    let firmas = 0
-    let link = 'contrato3pag.pdf'
+    let firmas = 1
+    let link = 'primera.pdf'
     let id = 3
     let rut = '196056920'
     let tipo = 'Liquidacion'
@@ -136,6 +148,9 @@ export default class SignPDF {
 
     const existingPdfBytes = await fetch(`https://websalsign.s3.amazonaws.com/${link}`).then(res => res.arrayBuffer())
 
+   
+   
+
     const fecha = moment().format('LLL');
 
     const logo = 'https://res.cloudinary.com/asdsa/image/upload/v1655758288/logo_tqkfqy.png'
@@ -146,6 +161,10 @@ export default class SignPDF {
     const qr = await qrcode.toDataURL(url)
 
     // console.log(qr)
+    // const veamos =  SignPDF.unit8ToBuffer(existingPdfBytes)
+    //     const {signature, signedData} = extractSignature(veamos, 1);
+    //     console.log('signature',signature)
+    //     console.log('signedData',signedData)
 
     const pdfDoc = await PDFDocument.load(existingPdfBytes)
     let img = await pdfDoc.embedPng(qr)
@@ -203,6 +222,7 @@ export default class SignPDF {
     // if (err) return console.error(err)
     // console.log('file saved to ')
     // })
+    
 
     return pdfDoc
 
