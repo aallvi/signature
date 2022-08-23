@@ -1,11 +1,11 @@
-import SignPDF from "./SignPDF";
+import SignPDF from "./SignPDF.js";
 import fs from "node:fs";
 import path from "node:path";
 
 async function main() {
   const pdfBuffer = new SignPDF(
-    path.resolve('test_assets/minions.pdf'),
-    path.resolve('test_assets/certificate.p12')
+    path.resolve('./test_assets/alvaro.pdf'),
+    path.resolve('./test_assets/test9.p12')
   );
 
   const signedDocs = await pdfBuffer.signPDF();
