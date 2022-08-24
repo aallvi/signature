@@ -1,11 +1,4 @@
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.default = void 0;
-
-var _pdfLib = require("pdf-lib");
+import { PDFArray, CharCodes } from "pdf-lib";
 
 /**
  * Extends PDFArray class in order to make ByteRange look like this:
@@ -16,57 +9,48 @@ var _pdfLib = require("pdf-lib");
  * @see https://github.com/Hopding/pdf-lib/issues/112#issuecomment-569085380
  * @author https://github.com/Hopding
  */
-class PDFArrayCustom extends _pdfLib.PDFArray {
+export default class PDFArrayCustom extends PDFArray {
   static withContext(context) {
     return new PDFArrayCustom(context);
   }
 
   clone(context) {
     const clone = PDFArrayCustom.withContext(context || this.context);
-
     for (let idx = 0, len = this.size(); idx < len; idx++) {
       clone.push(this.array[idx]);
     }
-
     return clone;
   }
 
   toString() {
     let arrayString = "[";
-
     for (let idx = 0, len = this.size(); idx < len; idx++) {
       arrayString += this.get(idx).toString();
       if (idx < len - 1) arrayString += " ";
     }
-
     arrayString += "]";
     return arrayString;
   }
 
   sizeInBytes() {
     let size = 2;
-
     for (let idx = 0, len = this.size(); idx < len; idx++) {
       size += this.get(idx).sizeInBytes();
       if (idx < len - 1) size += 1;
     }
-
     return size;
   }
 
   copyBytesInto(buffer, offset) {
     const initialOffset = offset;
-    buffer[offset++] = _pdfLib.CharCodes.LeftSquareBracket;
 
+    buffer[offset++] = CharCodes.LeftSquareBracket;
     for (let idx = 0, len = this.size(); idx < len; idx++) {
       offset += this.get(idx).copyBytesInto(buffer, offset);
-      if (idx < len - 1) buffer[offset++] = _pdfLib.CharCodes.Space;
+      if (idx < len - 1) buffer[offset++] = CharCodes.Space;
     }
+    buffer[offset++] = CharCodes.RightSquareBracket;
 
-    buffer[offset++] = _pdfLib.CharCodes.RightSquareBracket;
     return offset - initialOffset;
   }
-
 }
-
-exports.default = PDFArrayCustom;

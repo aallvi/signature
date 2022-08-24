@@ -13,7 +13,7 @@ import moment from "moment";
 import fetch from "node-fetch"
 import path from "node:path";
 
-import PDFArrayCustom from "./PDFArrayCustom.js";
+import PDFArrayCustom from "./PDFArrayCustom1.js";
 import { extractSignature } from "node-signpdf/dist/helpers/index.js";
 
 export default class SignPDF {
@@ -27,15 +27,21 @@ export default class SignPDF {
    */
   async signPDF() {
  
+    let newPDF = await this.firmar()
+    // let newPDF = this.pdfDoc
+
+    // let newPDF = await this._addPlaceholder();
+    //  newPDF = await this._addPlaceholder2();
+
+    //  fs.writeFileSync('./creadosSignPdf/firmado4.pdf', newPDF);
+
+    // newPDF = signer.sign(newPDF, this.certificate);
+    //  newPDF = await this.firmar(newPDF)
 
 
-    let newPDF = await this._addPlaceholder();
-
-
-    newPDF = signer.sign(newPDF, this.certificate);
-
+     fs.writeFileSync('./creadosSignPdf/veamos.pdf', newPDF);
   
-    return newPDF;
+    // return newPDF;
   }
 
   /**
@@ -103,11 +109,72 @@ export default class SignPDF {
   }
 
 
+  async _addPlaceholder2() {
+    const loadedPdf = await PDFDocument.load(this.pdfDoc);
+    const ByteRange = PDFArrayCustom.withContext(loadedPdf.context);
+    const DEFAULT_BYTE_RANGE_PLACEHOLDER = '**********';
+    const SIGNATURE_LENGTH = 3322;
+    const pages = loadedPdf.getPages();
+
+    ByteRange.push(PDFNumber.of(pages.length-1));
+    ByteRange.push(PDFName.of(DEFAULT_BYTE_RANGE_PLACEHOLDER));
+    ByteRange.push(PDFName.of(DEFAULT_BYTE_RANGE_PLACEHOLDER));
+    ByteRange.push(PDFName.of(DEFAULT_BYTE_RANGE_PLACEHOLDER));
+
+    const signatureDict = loadedPdf.context.obj({
+      Type: 'Sig',
+      Filter: 'Adobe.PPKLite',
+      SubFilter: 'adbe.pkcs7.detached',
+      ByteRange,
+      Contents: PDFHexString.of('A'.repeat(SIGNATURE_LENGTH)),
+      // Reason: PDFString.of('We need your signature for reasons...'),
+      M: PDFString.fromDate(new Date()),
+    });
+
+    const signatureDictRef = loadedPdf.context.register(signatureDict);
+
+    const widgetDict = loadedPdf.context.obj({
+      Type: 'Annot',
+      Subtype: 'Widget',
+      FT: 'Sig',
+      Rect: [275, 130, 152, 0], // Signature rect size
+      // Rect: [145, 130, 20, 0], // Signature rect size
+      V: signatureDictRef,
+      T: PDFString.of('Websal signature'),
+      F: 4,
+      P: pages[pages.length-1].ref,
+    },
+    );
+
+    const widgetDictRef = loadedPdf.context.register(widgetDict);
+
+    // Add signature widget to the first page
+    pages[pages.length-1].node.set(PDFName.of('Annots'), loadedPdf.context.obj([widgetDictRef]));
+
+    loadedPdf.catalog.set(
+      PDFName.of('AcroForm'),
+      loadedPdf.context.obj({
+        SigFlags: 3,
+        Fields: [widgetDictRef],
+      })
+    );
+
+    // Allows signatures on newer PDFs
+    // @see https://github.com/Hopding/pdf-lib/issues/541
+    const pdfBytes = await loadedPdf.save({ useObjectStreams: false });
+
+
+    
+    return SignPDF.unit8ToBuffer(pdfBytes);
+
+  }
+
+
   async firmar (){
 
         
-    let firmas = 1
-    let link = 'primera.pdf'
+    let firmas = 0
+    let link = 'to-amazon.pdf'
     let id = 3
     let rut = '196056920'
     let tipo = 'Liquidacion'
@@ -223,8 +290,12 @@ export default class SignPDF {
     // console.log('file saved to ')
     // })
     
+    const pdfBytes = await pdfDoc.save({ useObjectStreams: false });
 
-    return pdfDoc
+
+    
+    return SignPDF.unit8ToBuffer(pdfBytes);
+    // return pdfDoc
 
 
 
